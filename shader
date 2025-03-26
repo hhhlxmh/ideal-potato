@@ -2,8 +2,9 @@ Shader "Unlit/DM_03_phong"  //名称和路径
 {
     Properties  //属性块
     {
-        _MainCol ("颜色",color) = (1.0,1.0,1.0,1.0)
+        _MainCol ("物体颜色",color) = (1.0,1.0,1.0,1.0)
         _SpecularPow ("高光次幂",range(1,90)) = 30
+        _SpecularColor ("高光颜色",color) = (1,1,1,1)
     }
     SubShader
     {
@@ -36,6 +37,7 @@ Shader "Unlit/DM_03_phong"  //名称和路径
             //全局变量声明
             uniform float3 _MainCol;
             uniform float  _SpecularPow;
+            uniform float4 _SpecularColor;
 
             v2f vert (appdata v)  //顶点着色器vert
             {
@@ -49,17 +51,26 @@ Shader "Unlit/DM_03_phong"  //名称和路径
             fixed4 frag (v2f i) : SV_Target  //像素着色器frag
             {
                 //准备向量
-                float3 nDir = i.nDirWS;
+                float3 nDir = normalize(i.nDirWS);
                 float3 lDir = normalize(_WorldSpaceLightPos0.xyz);
                 float3 vDir = normalize(_WorldSpaceCameraPos.xyz - i.posWS.xyz);
-                float3 hDir = normalize(vDir + lDir);
+
+                //计算反射光线向量
+                float3 rDir = reflect(-lDir,nDir);
+
                 //准备点积结果
                 float ndotl = dot(nDir,lDir);
-                float ndoth = dot(nDir,hDir);
-                //光照模型
+                float rdotv = dot(rDir,vDir);
+
+                //漫反射光照模型
                 float lambert = max(0.0,ndotl);
-                float blinnPhong = pow(max(0.0,ndoth),_SpecularPow);
-                float3 finalRGB = _MainCol * lambert + blinnPhong;
+
+                //高光分量
+                float Phong = pow(max(0.0,rdotv),_SpecularPow);
+                float3 specular = _SpecularColor.rgb * Phong * _LightColor0.rgb;
+
+                float3 finalRGB = _MainCol * lambert + specular;
+
                 //返回结果
                 return fixed4(finalRGB, 1.0);
             }
@@ -67,4 +78,3 @@ Shader "Unlit/DM_03_phong"  //名称和路径
         }
     }
 }
-
